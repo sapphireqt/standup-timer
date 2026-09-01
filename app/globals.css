@@ -111,6 +111,99 @@ h1 {
   color: var(--accent);
 }
 
+.standup-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 360px);
+  align-items: start;
+  gap: 32px;
+}
+
+.standup-main {
+  min-width: 0;
+}
+
+.watch-panel {
+  position: sticky;
+  top: 24px;
+  display: grid;
+  gap: 12px;
+}
+
+.watch-frame {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  overflow: hidden;
+  border-radius: 18px;
+  background: transparent;
+}
+
+.watch-frame.is-vertical {
+  aspect-ratio: 9 / 16;
+}
+
+.watch-frame iframe {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border: 0;
+}
+
+.watch-empty {
+  display: flex;
+  height: 100%;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: var(--panel);
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.watch-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.watch-controls input {
+  flex: 1 1 160px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 14px;
+  font-size: 0.9rem;
+}
+
+.watch-vertical-toggle,
+.watch-reset-button {
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel-soft);
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 700;
+  transition: transform 140ms ease, background 140ms ease, color 140ms ease;
+  white-space: nowrap;
+}
+
+.watch-vertical-toggle.is-active {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
+.watch-vertical-toggle:hover,
+.watch-reset-button:hover {
+  transform: translateY(-2px);
+}
+
 .participant-list {
   display: grid;
   gap: 12px;
@@ -526,6 +619,16 @@ textarea::placeholder {
     opacity: 0;
     transform: translate3d(var(--confetti-drift), 108vh, 0)
       rotate(var(--confetti-rotation));
+  }
+}
+
+@media (max-width: 860px) {
+  .standup-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .watch-panel {
+    position: static;
   }
 }
 

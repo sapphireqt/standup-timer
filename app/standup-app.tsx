@@ -14,6 +14,7 @@ import {
   StandupSettings,
   subscribeToSettings,
 } from "@/lib/standup-settings";
+import WatchPanel from "./watch-panel";
 
 const pagesBasePath = process.env.NEXT_PUBLIC_PAGES_BASE_PATH ?? "";
 const settingsPath = `${pagesBasePath}/settings/`;
@@ -353,27 +354,36 @@ export default function StandupApp() {
         </a>
       </header>
 
-      {!hasHydrated && (
-        <section className="state-card" aria-live="polite">
-          <p className="state-kicker">One moment</p>
-          <h2>Preparing the standup…</h2>
-        </section>
-      )}
+      <div className="standup-layout">
+        <div className="standup-main">
+          {!hasHydrated && (
+            <section className="state-card" aria-live="polite">
+              <p className="state-kicker">One moment</p>
+              <h2>Preparing the standup…</h2>
+            </section>
+          )}
 
-      {hasHydrated && !settings && (
-        <section className="state-card">
-          <p className="state-kicker">No team yet</p>
-          <h2>Set up your standup</h2>
-          <p>Add the people taking part and choose how long each person gets.</p>
-          <a className="primary-link" href={settingsPath}>
-            Open settings
-          </a>
-        </section>
-      )}
+          {hasHydrated && !settings && (
+            <section className="state-card">
+              <p className="state-kicker">No team yet</p>
+              <h2>Set up your standup</h2>
+              <p>
+                Add the people taking part and choose how long each person
+                gets.
+              </p>
+              <a className="primary-link" href={settingsPath}>
+                Open settings
+              </a>
+            </section>
+          )}
 
-      {hasHydrated && settings && (
-        <StandupTimer key={settingsSnapshot} settings={settings} />
-      )}
+          {hasHydrated && settings && (
+            <StandupTimer key={settingsSnapshot} settings={settings} />
+          )}
+        </div>
+
+        <WatchPanel />
+      </div>
     </main>
   );
 }
