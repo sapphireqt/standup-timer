@@ -1,18 +1,26 @@
 "use client";
 
-import { FormEvent, useState, useSyncExternalStore } from "react";
+import { FormEvent, useEffect, useState, useSyncExternalStore } from "react";
 import {
   DEFAULT_SETTINGS,
+  getSearchSnapshot,
   getSettingsSnapshot,
+  normalizeSettings,
   parseUsers,
+  parseSettingsSearch,
   parseSettingsSnapshot,
+  replaceSearch,
   saveSettings,
+  settingsToSearch,
   StandupSettings,
+  subscribeToSearch,
   subscribeToSettings,
 } from "@/lib/standup-settings";
 
 const pagesBasePath = process.env.NEXT_PUBLIC_PAGES_BASE_PATH ?? "";
 const homePath = `${pagesBasePath}/`;
+// Browsers throttle history writes, so keystrokes settle before the URL moves.
+const URL_SYNC_DELAY_MS = 300;
 
 function SettingsForm({ initialSettings }: { initialSettings: StandupSettings }) {
   const [usersValue, setUsersValue] = useState(
@@ -22,6 +30,23 @@ function SettingsForm({ initialSettings }: { initialSettings: StandupSettings })
     String(initialSettings.durationMinutes),
   );
   const [error, setError] = useState("");
+
+  const draftSearch = settingsToSearch(
+    normalizeSettings({
+      version: 1,
+      users: parseUsers(usersValue),
+      durationMinutes: Number(durationValue),
+    }),
+  );
+
+  useEffect(() => {
+    const timeoutId = window.setTimeout(
+      () => replaceSearch(draftSearch),
+      URL_SYNC_DELAY_MS,
+    );
+
+    return () => window.clearTimeout(timeoutId);
+  }, [draftSearch]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -39,12 +64,15 @@ function SettingsForm({ initialSettings }: { initialSettings: StandupSettings })
       return;
     }
 
+    const settings: StandupSettings = { version: 1, users, durationMinutes };
+
     try {
-      saveSettings({ version: 1, users, durationMinutes });
-      window.location.assign(homePath);
+      saveSettings(settings);
     } catch {
-      setError("Settings could not be saved in this browser.");
+      // The link still carries the team, so keep going without local storage.
     }
+
+    window.location.assign(`${homePath}${settingsToSearch(settings)}`);
   };
 
   return (
@@ -54,7 +82,7 @@ function SettingsForm({ initialSettings }: { initialSettings: StandupSettings })
           <p className="eyebrow">Daily standup</p>
           <h1>Settings</h1>
         </div>
-        <a className="settings-link" href={homePath}>
+        <a className="settings-link" href={`${homePath}${draftSearch}`}>
           Back to standup
         </a>
       </header>
@@ -96,9 +124,14 @@ function SettingsForm({ initialSettings }: { initialSettings: StandupSettings })
         </label>
 
         <div className="form-footer">
-          <p className="form-error" role="alert">
-            {error}
-          </p>
+          <div className="form-messages">
+            <p className="field-hint">
+              Every edit updates the page link. Share it to share this team.
+            </p>
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          </div>
           <button className="save-button" type="submit">
             Save settings
           </button>
@@ -119,9 +152,18 @@ export default function SettingsApp() {
     getSettingsSnapshot,
     () => null,
   );
-  const savedSettings = parseSettingsSnapshot(settingsSnapshot);
+  const searchSnapshot = useSyncExternalStore(
+    subscribeToSearch,
+    getSearchSnapshot,
+    () => "",
+  );
+  // A shared link wins over whatever this browser happens to remember.
   const initialSettings =
-    hasHydrated && savedSettings ? savedSettings : DEFAULT_SETTINGS;
+    (hasHydrated &&
+      (parseSettingsSearch(searchSnapshot) ??
+        parseSettingsSnapshot(settingsSnapshot))) ||
+    DEFAULT_SETTINGS;
+  // Keyed on stored settings only: the form rewrites the URL while you type.
   const formKey = hasHydrated
     ? (settingsSnapshot ?? "browser-default")
     : "server-default";

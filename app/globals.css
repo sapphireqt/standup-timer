@@ -488,6 +488,11 @@ textarea::placeholder {
   padding-top: 12px;
 }
 
+.form-messages {
+  display: grid;
+  gap: 6px;
+}
+
 .form-error {
   margin-bottom: 0;
   color: var(--danger);

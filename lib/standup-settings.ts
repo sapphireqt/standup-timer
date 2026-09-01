@@ -1,5 +1,8 @@
 export const SETTINGS_STORAGE_KEY = "daily-standup:settings:v1";
+export const USER_PARAM = "u";
+export const DURATION_PARAM = "min";
 const SETTINGS_CHANGE_EVENT = "daily-standup:settings-changed";
+const SEARCH_CHANGE_EVENT = "daily-standup:search-changed";
 
 export type StandupSettings = {
   version: 1;
@@ -85,8 +88,80 @@ export function subscribeToSettings(onStoreChange: () => void): () => void {
 }
 
 export function saveSettings(settings: StandupSettings): void {
-  window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(settings));
+  const serialized = JSON.stringify(settings);
+
+  // Callers sync from a render effect, so writing the same value must stay a
+  // no-op instead of looping through the change event.
+  if (window.localStorage.getItem(SETTINGS_STORAGE_KEY) === serialized) {
+    return;
+  }
+
+  window.localStorage.setItem(SETTINGS_STORAGE_KEY, serialized);
   window.dispatchEvent(new Event(SETTINGS_CHANGE_EVENT));
+}
+
+// URLSearchParams percent-encodes UTF-8, so emoji, non-latin names, and
+// separators such as "&" or "=" survive a trip through the address bar.
+export function settingsToSearch(settings: StandupSettings | null): string {
+  if (!settings) {
+    return "";
+  }
+
+  const params = new URLSearchParams();
+  for (const name of settings.users) {
+    params.append(USER_PARAM, name);
+  }
+  params.set(DURATION_PARAM, String(settings.durationMinutes));
+
+  return `?${params}`;
+}
+
+export function parseSettingsSearch(search: string): StandupSettings | null {
+  const params = new URLSearchParams(search);
+  const durationMinutes = Number(params.get(DURATION_PARAM));
+
+  return normalizeSettings({
+    version: 1,
+    users: params.getAll(USER_PARAM),
+    durationMinutes:
+      Number.isFinite(durationMinutes) && durationMinutes > 0
+        ? durationMinutes
+        : DEFAULT_SETTINGS.durationMinutes,
+  });
+}
+
+export function getSearchSnapshot(): string {
+  return window.location.search;
+}
+
+export function subscribeToSearch(onStoreChange: () => void): () => void {
+  window.addEventListener("popstate", onStoreChange);
+  window.addEventListener(SEARCH_CHANGE_EVENT, onStoreChange);
+
+  return () => {
+    window.removeEventListener("popstate", onStoreChange);
+    window.removeEventListener(SEARCH_CHANGE_EVENT, onStoreChange);
+  };
+}
+
+export function replaceSearch(search: string): void {
+  const { hash, pathname, search: currentSearch } = window.location;
+  if (currentSearch === search) {
+    return;
+  }
+
+  try {
+    window.history.replaceState(
+      window.history.state,
+      "",
+      `${pathname}${search}${hash}`,
+    );
+  } catch {
+    // Sandboxed frames and rate limited history writes must not break the page.
+    return;
+  }
+
+  window.dispatchEvent(new Event(SEARCH_CHANGE_EVENT));
 }
 
 export function durationToMilliseconds(durationMinutes: number): number {

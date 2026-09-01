@@ -59,6 +59,7 @@ test("keeps settings local and includes tournament behavior", async () => {
   ]);
 
   assert.match(settingsSource, /window\.localStorage/);
+  assert.match(settingsSource, /URLSearchParams/);
   assert.match(settingsSource, /version:\s*1/);
   assert.match(standupSource, /hasStarted/);
   assert.match(standupSource, /Speed ranking/);
