@@ -9,9 +9,15 @@ import {
 } from "react";
 import {
   durationToMilliseconds,
+  getSearchSnapshot,
   getSettingsSnapshot,
+  parseSettingsSearch,
   parseSettingsSnapshot,
+  replaceSearch,
+  saveSettings,
+  settingsToSearch,
   StandupSettings,
+  subscribeToSearch,
   subscribeToSettings,
 } from "@/lib/standup-settings";
 
@@ -339,7 +345,29 @@ export default function StandupApp() {
     getSettingsSnapshot,
     () => null,
   );
-  const settings = parseSettingsSnapshot(settingsSnapshot);
+  const searchSnapshot = useSyncExternalStore(
+    subscribeToSearch,
+    getSearchSnapshot,
+    () => "",
+  );
+  // A shared link wins over whatever this browser happens to remember.
+  const settings =
+    parseSettingsSearch(searchSnapshot) ?? parseSettingsSnapshot(settingsSnapshot);
+  const settingsSearch = settingsToSearch(settings);
+
+  useEffect(() => {
+    if (!settings) {
+      return;
+    }
+
+    replaceSearch(settingsSearch);
+
+    try {
+      saveSettings(settings);
+    } catch {
+      // A browser without storage still runs the standup from the link.
+    }
+  }, [settings, settingsSearch]);
 
   return (
     <main className="standup-shell">
@@ -348,7 +376,7 @@ export default function StandupApp() {
           <p className="eyebrow">Team rhythm</p>
           <h1>Daily standup</h1>
         </div>
-        <a className="settings-link" href={settingsPath}>
+        <a className="settings-link" href={`${settingsPath}${settingsSearch}`}>
           Settings
         </a>
       </header>
@@ -372,7 +400,7 @@ export default function StandupApp() {
       )}
 
       {hasHydrated && settings && (
-        <StandupTimer key={settingsSnapshot} settings={settings} />
+        <StandupTimer key={settingsSearch} settings={settings} />
       )}
     </main>
   );

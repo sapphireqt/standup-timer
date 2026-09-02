@@ -10,7 +10,7 @@
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
     "pages:build": "npm run build && node scripts/prepare-pages.mjs",
     "start": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext start",
-    "test": "PAGES_BASE_PATH=/standup-timer NEXT_PUBLIC_PAGES_BASE_PATH=/standup-timer SITE_URL=https://example.com/standup-timer npm run pages:build && node --test tests/rendered-html.test.mjs",
+    "test": "PAGES_BASE_PATH=/standup-timer NEXT_PUBLIC_PAGES_BASE_PATH=/standup-timer SITE_URL=https://example.com/standup-timer npm run pages:build && node --test --experimental-strip-types --disable-warning=ExperimentalWarning tests/*.test.mjs",
     "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
     "db:generate": "drizzle-kit generate"
   },
