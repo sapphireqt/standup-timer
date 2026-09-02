@@ -16,17 +16,26 @@ A minimal, large-screen friendly web app for running daily standups.
 
 ## Shareable links
 
-Both routes read the team from the query string: one `u` value per person plus
-`min` for the per-person minutes.
+Both routes carry the team in a single `t` query value: the settings JSON encoded as
+UTF-8 bytes in base64url.
 
 ```
-/?u=Alex%20Morgan&u=Sam%20Rivera&min=1.5
+/?t=eyJ2ZXJzaW9uIjoxLCJ1c2VycyI6WyJBbGV4IE1vcmdhbiIsIlNhbSBSaXZlcmEiXSwiZHVyYXRpb25NaW51dGVzIjoxLjV9
 ```
 
-`URLSearchParams` does the encoding, so emoji, non-latin names, and separators such
-as `&` or `=` survive the trip through the address bar. A link wins over whatever the
-browser has stored, and opening one also saves that team locally, so a plain `/`
-still works on the next visit — and gets its query string back right away.
+Going through UTF-8 bytes is what lets `btoa` handle emoji and non-latin names at
+all, and the base64url alphabet needs no percent escaping, so nothing in the link
+can be mangled by a chat client. It is also the shorter form for anything outside
+latin: a four person Cyrillic team costs 197 characters here against 276 percent
+escaped. A value that no longer decodes — truncated, retyped, or from a future
+format — is ignored rather than shown as mojibake.
+
+Hand-written links keep working too: `?u=Alex&u=Sam&min=2` opens the same standup and
+is rewritten to the encoded form on load.
+
+A link wins over whatever the browser has stored, and opening one also saves that
+team locally, so a plain `/` still works on the next visit — and gets its query
+string back right away.
 
 ## Development
 

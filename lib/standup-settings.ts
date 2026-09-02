@@ -1,4 +1,5 @@
 export const SETTINGS_STORAGE_KEY = "daily-standup:settings:v1";
+export const TEAM_PARAM = "t";
 export const USER_PARAM = "u";
 export const DURATION_PARAM = "min";
 const SETTINGS_CHANGE_EVENT = "daily-standup:settings-changed";
@@ -100,24 +101,49 @@ export function saveSettings(settings: StandupSettings): void {
   window.dispatchEvent(new Event(SETTINGS_CHANGE_EVENT));
 }
 
-// URLSearchParams percent-encodes UTF-8, so emoji, non-latin names, and
-// separators such as "&" or "=" survive a trip through the address bar.
+// btoa only speaks Latin-1, so the team goes through UTF-8 bytes first. That is
+// what keeps emoji and non-latin names intact. The base64url alphabet then needs
+// no percent escaping, so the whole team travels as one compact query value.
+function toBase64Url(value: string): string {
+  let binary = "";
+  for (const byte of new TextEncoder().encode(value)) {
+    binary += String.fromCharCode(byte);
+  }
+
+  return btoa(binary).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+function fromBase64Url(value: string): string | null {
+  try {
+    const binary = atob(value.replace(/-/g, "+").replace(/_/g, "/"));
+    const bytes = Uint8Array.from(binary, (character) => character.charCodeAt(0));
+
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    // A truncated or hand-mangled link decodes to nothing rather than mojibake.
+    return null;
+  }
+}
+
 export function settingsToSearch(settings: StandupSettings | null): string {
   if (!settings) {
     return "";
   }
 
-  const params = new URLSearchParams();
-  for (const name of settings.users) {
-    params.append(USER_PARAM, name);
-  }
-  params.set(DURATION_PARAM, String(settings.durationMinutes));
-
-  return `?${params}`;
+  return `?${TEAM_PARAM}=${toBase64Url(JSON.stringify(settings))}`;
 }
 
 export function parseSettingsSearch(search: string): StandupSettings | null {
   const params = new URLSearchParams(search);
+  const encodedTeam = params.get(TEAM_PARAM);
+  const team = encodedTeam ? fromBase64Url(encodedTeam) : null;
+  const settings = team ? parseSettingsSnapshot(team) : null;
+
+  if (settings) {
+    return settings;
+  }
+
+  // Readable links stay welcome: "?u=Alex&u=Sam&min=2" still opens a standup.
   const durationMinutes = Number(params.get(DURATION_PARAM));
 
   return normalizeSettings({
